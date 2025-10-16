@@ -1,0 +1,3 @@
+dbt-sl-sdk[sync]==0.13.0
+google-cloud-bigquery[pandas]
+streamlit==1.50.0
