@@ -357,7 +357,7 @@ def main():
 
     # Sidebar: Configuration and Saved Segments
     with st.sidebar:
-        with st.expander("⚙️ dbt Semantic Layer Configuration", expanded=True):
+        with st.expander("⚙️ dbt Semantic Layer Configuration", expanded=False):
             # dbt Semantic Layer credentials - load from secrets or allow manual override
             default_env_id = st.secrets.get("dbt", {}).get("environment_id", 70403103993055)
             default_auth_token = st.secrets.get("dbt", {}).get("auth_token", "")
