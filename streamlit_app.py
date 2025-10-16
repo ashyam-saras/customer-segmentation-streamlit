@@ -147,6 +147,28 @@ def delete_segment(segment_name: str):
         json.dump({"segments": segments}, f, indent=2)
 
 
+def import_segments_from_file(uploaded_data: Dict[str, Any], merge: bool = True):
+    """Import segments from uploaded JSON file."""
+    existing_segments = load_segments() if merge else []
+    new_segments = uploaded_data.get("segments", [])
+
+    # Get existing segment names for duplicate checking
+    existing_names = {s["name"] for s in existing_segments}
+
+    # Add only new segments (avoid duplicates)
+    imported_count = 0
+    for segment in new_segments:
+        if segment["name"] not in existing_names:
+            existing_segments.append(segment)
+            imported_count += 1
+
+    # Save updated segments
+    with open(SEGMENTS_FILE, "w") as f:
+        json.dump({"segments": existing_segments}, f, indent=2)
+
+    return imported_count, len(new_segments)
+
+
 def build_where_clause(conditions: List[Dict[str, Any]]) -> str:
     """Build a where clause from conditions list."""
     if not conditions:
@@ -402,6 +424,68 @@ def main():
 
         st.divider()
         st.header("💾 Saved Segments")
+
+        # Import/Export segments
+        with st.expander("📥 Import/Export Segments", expanded=False):
+            uploaded_segments_file = st.file_uploader(
+                "Upload segments JSON file",
+                type=["json"],
+                help="Upload a JSON file containing saved segments",
+                key="segments_uploader",
+            )
+
+            if uploaded_segments_file is not None:
+                try:
+                    uploaded_data = json.load(uploaded_segments_file)
+
+                    col_merge, col_replace = st.columns(2)
+                    with col_merge:
+                        if st.button(
+                            "➕ Merge", key="merge_segments", width="stretch", help="Add new segments, keep existing"
+                        ):
+                            imported_count, total_count = import_segments_from_file(uploaded_data, merge=True)
+                            st.success(f"✅ Imported {imported_count}/{total_count} new segments")
+                            st.rerun()
+
+                    with col_replace:
+                        if st.button(
+                            "🔄 Replace All",
+                            key="replace_segments",
+                            width="stretch",
+                            help="Replace all existing segments",
+                        ):
+                            imported_count, total_count = import_segments_from_file(uploaded_data, merge=False)
+                            st.success(f"✅ Replaced with {total_count} segments")
+                            st.rerun()
+
+                    # Preview uploaded segments
+                    preview_segments = uploaded_data.get("segments", [])
+                    if preview_segments:
+                        st.caption(f"📋 Preview: {len(preview_segments)} segment(s) in file")
+                        for seg in preview_segments[:3]:  # Show first 3
+                            st.caption(f"• {seg['name']}")
+                        if len(preview_segments) > 3:
+                            st.caption(f"... and {len(preview_segments) - 3} more")
+
+                except Exception as e:
+                    st.error(f"Error reading file: {str(e)}")
+
+            st.divider()
+
+            # Export segments
+            saved_segments_for_export = load_segments()
+            if saved_segments_for_export:
+                export_data = json.dumps({"segments": saved_segments_for_export}, indent=2)
+                st.download_button(
+                    label="📤 Download Segments",
+                    data=export_data,
+                    file_name=f"segments_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json",
+                    help="Download all saved segments as JSON file",
+                    use_container_width=True,
+                )
+            else:
+                st.caption("No segments to export")
 
         saved_segments = load_segments()
 
